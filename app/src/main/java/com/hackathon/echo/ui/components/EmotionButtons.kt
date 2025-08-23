@@ -58,8 +58,8 @@ fun EmotionButtons(
         ),
         EmotionButtonData(
             emotion = EmotionType.THOUGHTFUL,
-            text = "Поразмышлять",
-            emoji = "🤔",
+            text = "Общение",
+            emoji = "💬",
             color = Thoughtful
         ),
         EmotionButtonData(
