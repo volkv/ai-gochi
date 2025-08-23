@@ -72,6 +72,9 @@ class EchoViewModel(private val context: Context) : ViewModel() {
     private val _statsChangeAfter = MutableStateFlow<PetStats?>(null)
     val statsChangeAfter: StateFlow<PetStats?> = _statsChangeAfter.asStateFlow()
     
+    private val _isPetTyping = MutableStateFlow(false)
+    val isPetTyping: StateFlow<Boolean> = _isPetTyping.asStateFlow()
+    
     init {
         _interactionHistory.value = emptyList()
         SoundManager.initialize(context)
@@ -114,7 +117,7 @@ class EchoViewModel(private val context: Context) : ViewModel() {
         )
         
         saveInteractionToPreferences(emotion, userInputText)
-        updatePetStats(emotion)
+        updatePetStats(emotion, userInputText)
         updateStats()
         
         val reflectiveQuestion = memorySystem.getReflectiveQuestion(emotion)
@@ -153,7 +156,7 @@ class EchoViewModel(private val context: Context) : ViewModel() {
         )
         
         saveInteractionToPreferences(detectedEmotion, text)
-        updatePetStats(detectedEmotion)
+        updatePetStats(detectedEmotion, text)
         updateStats()
         
         val reflectiveQuestion = memorySystem.getReflectiveQuestion(detectedEmotion)
@@ -219,9 +222,15 @@ class EchoViewModel(private val context: Context) : ViewModel() {
         SoundManager.updateSettings(settings)
     }
     
-    fun updatePetStats(emotion: EmotionType) {
+    fun updatePetStats(emotion: EmotionType, userInput: String = "") {
         val currentStats = _petStats.value
-        val newStats = PetStats.increase(currentStats, emotion)
+        var newStats = PetStats.increase(currentStats, emotion)
+        
+        // Проверяем на эмпатичность сообщения
+        if (userInput.isNotEmpty() && detectEmpathyFromText(userInput)) {
+            newStats = PetStats.increaseEmpathy(newStats)
+        }
+        
         _petStats.value = newStats
         
         // Сохраняем статистики в preferences
@@ -267,19 +276,33 @@ class EchoViewModel(private val context: Context) : ViewModel() {
         val statsBefore = _petStats.value
         addChatMessage(ChatMessage(text = text.trim(), isFromUser = true))
         
-        processUserInput(text.trim())
+        // Показываем typing indicator
+        _isPetTyping.value = true
         
         CoroutineScope(Dispatchers.Main).launch {
-            delay(500)
+            // Симуляция "размышления" питомца перед ответом
+            delay((1000..2000).random().toLong())
+            
+            // Обрабатываем ответ питомца
+            processUserInput(text.trim())
             
             val response = _currentResponse.value
             if (response.isNotEmpty()) {
+                // Симуляция "набора" ответа
+                delay((800..1500).random().toLong())
+                
+                // Скрываем typing indicator и показываем ответ
+                _isPetTyping.value = false
                 addChatMessage(ChatMessage(text = response, isFromUser = false))
-            }
-            
-            val statsAfter = _petStats.value
-            if (statsBefore != statsAfter) {
-                showStatsChangeModal(statsBefore, statsAfter)
+                
+                // Показываем модалку изменения статистик с задержкой
+                delay(1500)
+                val statsAfter = _petStats.value
+                if (statsBefore != statsAfter) {
+                    showStatsChangeModal(statsBefore, statsAfter)
+                }
+            } else {
+                _isPetTyping.value = false
             }
         }
     }
@@ -442,6 +465,25 @@ class EchoViewModel(private val context: Context) : ViewModel() {
             thoughtfulScore == maxScore -> EmotionType.THOUGHTFUL
             else -> EmotionType.NEUTRAL
         }
+    }
+    
+    private fun detectEmpathyFromText(text: String): Boolean {
+        val lowercaseText = text.lowercase(Locale.getDefault())
+        
+        val empathyKeywords = listOf(
+            "чувствую", "переживаю", "волнуюсь", "боюсь", "мечтаю", "надеюсь",
+            "беспокоюсь", "тревожусь", "сердце", "душа", "эмоции", "откровенно",
+            "поделиться", "доверяю", "искренне", "честно говоря", "по секрету",
+            "лично", "интимно", "глубоко", "сокровенное", "признаюсь"
+        )
+        
+        val empathyScore = empathyKeywords.count { keyword ->
+            lowercaseText.contains(keyword)
+        }
+        
+        // Считается эмпатичным, если содержит ключевые слова эмпатии
+        // или если сообщение длинное (>50 символов) - значит пользователь делится чем-то личным
+        return empathyScore > 0 || text.length > 50
     }
     
     private fun getContextualResponse(userInput: String, emotion: EmotionType): String {

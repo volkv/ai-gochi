@@ -76,6 +76,13 @@ fun PetStatsBar(
             emoji = "😐",
             color = Neutral,
             value = petStats.neutral
+        ),
+        StatBarData(
+            emotion = EmotionType.NEUTRAL,
+            name = "Эмпатия",
+            emoji = "💝",
+            color = Color(0xFFE91E63),
+            value = petStats.empathy
         )
     )
     
@@ -175,5 +182,125 @@ private fun StatBar(
                 )
             }
         }
+    }
+}
+
+@Composable
+fun CompactPetStatsBar(
+    petStats: PetStats,
+    modifier: Modifier = Modifier
+) {
+    val statsData = listOf(
+        StatBarData(
+            emotion = EmotionType.JOY,
+            name = "Радость",
+            emoji = "😊",
+            color = Joy,
+            value = petStats.joy
+        ),
+        StatBarData(
+            emotion = EmotionType.SADNESS,
+            name = "Грусть", 
+            emoji = "😢",
+            color = Sadness,
+            value = petStats.sadness
+        ),
+        StatBarData(
+            emotion = EmotionType.THOUGHTFUL,
+            name = "Мысли",
+            emoji = "🤔", 
+            color = Thoughtful,
+            value = petStats.thoughtful
+        ),
+        StatBarData(
+            emotion = EmotionType.NEUTRAL,
+            name = "Спокойствие",
+            emoji = "😐",
+            color = Neutral,
+            value = petStats.neutral
+        ),
+        StatBarData(
+            emotion = EmotionType.NEUTRAL,
+            name = "Эмпатия",
+            emoji = "💝",
+            color = Color(0xFFE91E63),
+            value = petStats.empathy
+        )
+    )
+    
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            statsData.forEach { statData ->
+                CompactStatIndicator(statData = statData)
+            }
+        }
+    }
+}
+
+@Composable
+private fun CompactStatIndicator(
+    statData: StatBarData
+) {
+    val animatedProgress by animateFloatAsState(
+        targetValue = statData.value / 100f,
+        animationSpec = tween(
+            durationMillis = 600,
+            easing = AnimationUtils.SmoothEasing
+        ),
+        label = "compact_stat_progress"
+    )
+    
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            text = statData.emoji,
+            fontSize = 14.sp
+        )
+        
+        Canvas(
+            modifier = Modifier
+                .size(width = 32.dp, height = 6.dp)
+                .clip(RoundedCornerShape(3.dp))
+        ) {
+            val canvasWidth = size.width
+            val canvasHeight = size.height
+            
+            drawRoundRect(
+                color = Color.Gray.copy(alpha = 0.3f),
+                topLeft = Offset.Zero,
+                size = Size(canvasWidth, canvasHeight),
+                cornerRadius = CornerRadius(canvasHeight / 2)
+            )
+            
+            drawRoundRect(
+                color = statData.color,
+                topLeft = Offset.Zero,
+                size = Size(canvasWidth * animatedProgress, canvasHeight),
+                cornerRadius = CornerRadius(canvasHeight / 2)
+            )
+        }
+        
+        Text(
+            text = "${statData.value}",
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Bold,
+            color = statData.color,
+            fontSize = 11.sp
+        )
     }
 }

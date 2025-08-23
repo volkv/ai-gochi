@@ -1,12 +1,16 @@
 package com.hackathon.echo.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -25,8 +29,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hackathon.echo.data.EmotionType
 import com.hackathon.echo.ui.components.ChatBubble
 import com.hackathon.echo.ui.components.ChatInterface
+import com.hackathon.echo.ui.components.CompactPetStatsBar
 import com.hackathon.echo.ui.components.PetAvatar
-import com.hackathon.echo.ui.components.PetStatsBar
 import com.hackathon.echo.ui.components.RoomBackground
 import com.hackathon.echo.ui.components.StatsChangeModal
 import com.hackathon.echo.ui.theme.Thoughtful
@@ -47,6 +51,7 @@ fun MainScreen() {
     val showStatsChange by viewModel.showStatsChange.collectAsState()
     val statsChangeBefore by viewModel.statsChangeBefore.collectAsState()
     val statsChangeAfter by viewModel.statsChangeAfter.collectAsState()
+    val isPetTyping by viewModel.isPetTyping.collectAsState()
     
     Box(
         modifier = Modifier.fillMaxSize()
@@ -56,58 +61,73 @@ fun MainScreen() {
             modifier = Modifier.fillMaxSize()
         )
         
-        Column(
+        // Затемняющий overlay для лучшего контраста
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
-            horizontalAlignment = Alignment.CenterHorizontally
+                .background(Color.Black.copy(alpha = 0.15f))
+        )
+        
+        Column(
+            modifier = Modifier.fillMaxSize()
         ) {
-            // Питомец в центре экрана
-            Box(
-                modifier = Modifier.weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                PetAvatar(
-                    petState = petState
-                )
-                
-                if (currentResponse.isNotEmpty()) {
-                    Box(
-                        modifier = Modifier.align(Alignment.TopCenter)
-                    ) {
-                        ChatBubble(
-                            message = currentResponse,
-                            isVisible = currentResponse.isNotEmpty(),
-                            onDismiss = { /* Пусто, сообщение исчезнет автоматически */ }
-                        )
-                    }
-                }
-            }
-            
-            // Шкалы состояния питомца
-            PetStatsBar(
+            // Компактная панель статистик вверху
+            CompactPetStatsBar(
                 petStats = petStats,
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(top = 8.dp, start = 16.dp, end = 16.dp)
             )
             
-            // Кнопка чата
-            Button(
-                onClick = { viewModel.openChat() },
+            // Основной контент
+            Column(
                 modifier = Modifier
+                    .weight(1f)
                     .fillMaxWidth()
-                    .height(64.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Thoughtful,
-                    contentColor = Color.White
-                )
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = "💬 Рассказать",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Medium
-                )
+                // Питомец в центре экрана
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    PetAvatar(
+                        petState = petState
+                    )
+                    
+                    if (currentResponse.isNotEmpty()) {
+                        Box(
+                            modifier = Modifier.align(Alignment.TopCenter)
+                        ) {
+                            ChatBubble(
+                                message = currentResponse,
+                                isVisible = currentResponse.isNotEmpty(),
+                                onDismiss = { /* Пусто, сообщение исчезнет автоматически */ }
+                            )
+                        }
+                    }
+                }
+                
+                // Кнопка чата
+                Button(
+                    onClick = { viewModel.openChat() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(64.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Thoughtful,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text(
+                        text = "💬 Рассказать",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         }
         
@@ -125,7 +145,8 @@ fun MainScreen() {
                     viewModel.fillDemoPhrase(phrase)
                 }
             },
-            currentDemoStep = currentDemoStep
+            currentDemoStep = currentDemoStep,
+            isPetTyping = isPetTyping
         )
         
         if (showStatsChange && statsChangeBefore != null && statsChangeAfter != null) {

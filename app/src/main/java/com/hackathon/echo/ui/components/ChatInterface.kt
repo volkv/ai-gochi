@@ -7,13 +7,20 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -51,6 +58,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.getValue
 import com.hackathon.echo.data.DemoScriptedPhrases
 import com.hackathon.echo.data.EmotionType
 import com.hackathon.echo.ui.theme.Joy
@@ -72,6 +85,7 @@ fun ChatInterface(
     onClose: () -> Unit,
     onDemoPhrase: (String) -> Unit,
     currentDemoStep: Int = 0,
+    isPetTyping: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     if (isOpen) {
@@ -94,6 +108,7 @@ fun ChatInterface(
                     onClose = onClose,
                     onDemoPhrase = onDemoPhrase,
                     currentDemoStep = currentDemoStep,
+                    isPetTyping = isPetTyping,
                     modifier = modifier
                 )
             }
@@ -108,6 +123,7 @@ private fun ChatContent(
     onClose: () -> Unit,
     onDemoPhrase: (String) -> Unit,
     currentDemoStep: Int,
+    isPetTyping: Boolean,
     modifier: Modifier = Modifier
 ) {
     var inputText by remember { mutableStateOf("") }
@@ -123,6 +139,8 @@ private fun ChatContent(
     Card(
         modifier = modifier
             .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .windowInsetsPadding(WindowInsets.navigationBars)
             .padding(16.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
@@ -203,6 +221,13 @@ private fun ChatContent(
                     items(messages) { message ->
                         MessageBubble(message = message)
                     }
+                    
+                    // Показываем typing indicator когда питомец набирает
+                    if (isPetTyping) {
+                        item {
+                            TypingIndicator()
+                        }
+                    }
                 }
             }
             
@@ -224,7 +249,10 @@ private fun ChatContent(
             
             // Поле ввода и кнопка отправки
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.ime)
+                    .padding(bottom = 16.dp),
                 verticalAlignment = Alignment.Bottom
             ) {
                 OutlinedTextField(
@@ -412,6 +440,59 @@ private fun DemoButton(
                     text = "Авто",
                     fontWeight = FontWeight.Medium
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TypingIndicator() {
+    val infiniteTransition = rememberInfiniteTransition(label = "typing")
+    
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp),
+        horizontalArrangement = Arrangement.Start
+    ) {
+        Card(
+            modifier = Modifier.widthIn(max = 80.dp),
+            shape = RoundedCornerShape(
+                topStart = 16.dp,
+                topEnd = 16.dp,
+                bottomStart = 4.dp,
+                bottomEnd = 16.dp
+            ),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.Gray.copy(alpha = 0.1f)
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Анимированные точки
+                repeat(3) { index ->
+                    val alpha by infiniteTransition.animateFloat(
+                        initialValue = 0.3f,
+                        targetValue = 1.0f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(600),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "dot_$index"
+                    )
+                    
+                    Text(
+                        text = "•",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color.Black.copy(alpha = alpha),
+                        modifier = Modifier
+                            .padding(horizontal = 1.dp)
+                    )
+                }
             }
         }
     }

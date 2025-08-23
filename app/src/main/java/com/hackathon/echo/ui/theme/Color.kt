@@ -10,8 +10,8 @@ val Purple40 = Color(0xFF6650a4)
 val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)
 
-// Pet emotion colors
-val Joy = Color(0xFFFFD700)
-val Sadness = Color(0xFF4169E1) 
-val Thoughtful = Color(0xFF9370DB)
-val Neutral = Color(0xFF808080)
+// Pet emotion colors (optimized for better contrast)
+val Joy = Color(0xFFFF8C00)        // DarkOrange - better visibility than gold
+val Sadness = Color(0xFF1E90FF)    // DodgerBlue - brighter than previous blue  
+val Thoughtful = Color(0xFF8A2BE2)  // BlueViolet - slightly brighter purple
+val Neutral = Color(0xFF696969)    // DimGray - slightly darker for better text contrast
