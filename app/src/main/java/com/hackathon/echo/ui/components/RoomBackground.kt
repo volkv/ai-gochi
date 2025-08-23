@@ -4,58 +4,68 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.scale
 import com.hackathon.echo.data.PetState
 import com.hackathon.echo.data.RoomLighting
 import com.hackathon.echo.data.PlantState
 import com.hackathon.echo.data.WeatherState
 import com.hackathon.echo.data.EmotionType
+import com.hackathon.echo.utils.animatedRoomLighting
+import com.hackathon.echo.utils.AnimationUtils
 
 @Composable
 fun RoomBackground(
     petState: PetState,
     modifier: Modifier = Modifier
 ) {
+    val roomAnimation = animatedRoomLighting(petState, AnimationUtils.smoothTransition)
+    
+    val backgroundColors = when (petState.roomLighting) {
+        RoomLighting.WARM -> listOf(Color(0xFFFFF8DC), Color(0xFFFFE4B5))
+        RoomLighting.COLD -> listOf(Color(0xFFE6F3FF), Color(0xFFB3D9FF))
+        RoomLighting.SOFT -> listOf(Color(0xFFF8F8FF), Color(0xFFE6E6FA))
+        RoomLighting.BALANCED -> listOf(Color(0xFFF5F5F5), Color(0xFFE0E0E0))
+    }
+    
+    val lightingAdjustedColors = backgroundColors.map { color ->
+        color.copy(alpha = roomAnimation.lightingIntensity)
+    }
+    
     Canvas(
         modifier = modifier
             .fillMaxSize()
             .background(
-                brush = when (petState.roomLighting) {
-                    RoomLighting.WARM -> Brush.verticalGradient(
-                        colors = listOf(Color(0xFFFFF8DC), Color(0xFFFFE4B5))
-                    )
-                    RoomLighting.COLD -> Brush.verticalGradient(
-                        colors = listOf(Color(0xFFE6F3FF), Color(0xFFB3D9FF))
-                    )
-                    RoomLighting.SOFT -> Brush.verticalGradient(
-                        colors = listOf(Color(0xFFF8F8FF), Color(0xFFE6E6FA))
-                    )
-                    RoomLighting.BALANCED -> Brush.verticalGradient(
-                        colors = listOf(Color(0xFFF5F5F5), Color(0xFFE0E0E0))
-                    )
-                }
+                brush = Brush.verticalGradient(colors = lightingAdjustedColors)
             )
     ) {
-        drawRoom(petState)
+        drawAnimatedRoom(petState, roomAnimation)
     }
 }
 
-private fun DrawScope.drawRoom(petState: PetState) {
+private fun DrawScope.drawAnimatedRoom(
+    petState: PetState,
+    roomAnimation: com.hackathon.echo.utils.RoomAnimationValues
+) {
     val width = size.width
     val height = size.height
     
     drawFloor(width, height)
-    drawWindow(petState.weatherState, width, height)
+    drawAnimatedWindow(petState.weatherState, width, height, roomAnimation.windowBrightness)
     drawTable(width, height)
-    drawPlant(petState.plantState, width, height)
     
-    if (petState.emotion == EmotionType.THOUGHTFUL) {
-        drawCandle(width, height)
+    scale(roomAnimation.plantScale) {
+        drawAnimatedPlant(petState.plantState, width, height, roomAnimation.plantScale)
+    }
+    
+    if (roomAnimation.candleAlpha > 0f) {
+        drawAnimatedCandle(width, height, roomAnimation.candleAlpha)
     }
 }
 
@@ -77,7 +87,12 @@ private fun DrawScope.drawFloor(width: Float, height: Float) {
     }
 }
 
-private fun DrawScope.drawWindow(weather: WeatherState, width: Float, height: Float) {
+private fun DrawScope.drawAnimatedWindow(
+    weather: WeatherState, 
+    width: Float, 
+    height: Float,
+    brightness: Float
+) {
     val windowWidth = width * 0.3f
     val windowHeight = height * 0.25f
     val windowLeft = width * 0.1f
@@ -89,11 +104,12 @@ private fun DrawScope.drawWindow(weather: WeatherState, width: Float, height: Fl
         size = Size(windowWidth + 20f, windowHeight + 20f)
     )
     
-    val skyColor = when (weather) {
+    val baseColor = when (weather) {
         WeatherState.SUNNY -> Color(0xFF87CEEB)
         WeatherState.CLOUDY -> Color(0xFF708090)
         WeatherState.CLEAR -> Color(0xFFB0E0E6)
     }
+    val skyColor = baseColor.copy(alpha = brightness)
     
     drawRect(
         color = skyColor,
@@ -109,7 +125,7 @@ private fun DrawScope.drawWindow(weather: WeatherState, width: Float, height: Fl
                 windowTop + windowHeight * 0.3f
             )
             drawCircle(
-                color = Color(0xFFFFD700),
+                color = Color(0xFFFFD700).copy(alpha = brightness),
                 radius = sunRadius,
                 center = sunCenter
             )
@@ -125,7 +141,7 @@ private fun DrawScope.drawWindow(weather: WeatherState, width: Float, height: Fl
                     sunCenter.y + Math.sin(angle).toFloat() * (sunRadius + 15f)
                 )
                 drawLine(
-                    color = Color(0xFFFFD700),
+                    color = Color(0xFFFFD700).copy(alpha = brightness),
                     start = rayStart,
                     end = rayEnd,
                     strokeWidth = 3f
@@ -133,13 +149,15 @@ private fun DrawScope.drawWindow(weather: WeatherState, width: Float, height: Fl
             }
         }
         WeatherState.CLOUDY -> {
-            drawCloud(
+            drawAnimatedCloud(
                 Offset(windowLeft + windowWidth * 0.3f, windowTop + windowHeight * 0.4f),
-                windowWidth * 0.15f
+                windowWidth * 0.15f,
+                brightness
             )
-            drawCloud(
+            drawAnimatedCloud(
                 Offset(windowLeft + windowWidth * 0.7f, windowTop + windowHeight * 0.2f),
-                windowWidth * 0.12f
+                windowWidth * 0.12f,
+                brightness
             )
         }
         WeatherState.CLEAR -> {
@@ -161,8 +179,8 @@ private fun DrawScope.drawWindow(weather: WeatherState, width: Float, height: Fl
     )
 }
 
-private fun DrawScope.drawCloud(center: Offset, radius: Float) {
-    val cloudColor = Color(0xFFFFFFFF)
+private fun DrawScope.drawAnimatedCloud(center: Offset, radius: Float, alpha: Float) {
+    val cloudColor = Color(0xFFFFFFFF).copy(alpha = alpha)
     drawCircle(cloudColor, radius * 0.8f, center)
     drawCircle(cloudColor, radius * 0.6f, Offset(center.x - radius * 0.4f, center.y))
     drawCircle(cloudColor, radius * 0.6f, Offset(center.x + radius * 0.4f, center.y))
@@ -198,7 +216,7 @@ private fun DrawScope.drawTable(width: Float, height: Float) {
     }
 }
 
-private fun DrawScope.drawPlant(plantState: PlantState, width: Float, height: Float) {
+private fun DrawScope.drawAnimatedPlant(plantState: PlantState, width: Float, height: Float, scale: Float) {
     val potWidth = width * 0.12f
     val potHeight = height * 0.08f
     val potLeft = width * 0.6f
@@ -215,10 +233,10 @@ private fun DrawScope.drawPlant(plantState: PlantState, width: Float, height: Fl
     val stemHeight = height * 0.15f
     
     drawLine(
-        color = Color(0xFF228B22),
+        color = Color(0xFF228B22).copy(alpha = scale.coerceAtMost(1f)),
         start = Offset(stemX, potTop),
         end = Offset(stemX, stemTop),
-        strokeWidth = 4f
+        strokeWidth = 4f * scale
     )
     
     when (plantState) {
@@ -230,63 +248,63 @@ private fun DrawScope.drawPlant(plantState: PlantState, width: Float, height: Fl
                     stemTop + Math.sin(angle).toFloat() * 15f
                 )
                 drawCircle(
-                    color = Color(0xFFFF69B4),
-                    radius = 8f,
+                    color = Color(0xFFFF69B4).copy(alpha = scale.coerceAtMost(1f)),
+                    radius = 8f * scale,
                     center = petalEnd
                 )
             }
             drawCircle(
-                color = Color(0xFFFFD700),
-                radius = 6f,
+                color = Color(0xFFFFD700).copy(alpha = scale.coerceAtMost(1f)),
+                radius = 6f * scale,
                 center = Offset(stemX, stemTop)
             )
         }
         PlantState.NORMAL -> {
             drawCircle(
-                color = Color(0xFF90EE90),
-                radius = 12f,
+                color = Color(0xFF90EE90).copy(alpha = scale.coerceAtMost(1f)),
+                radius = 12f * scale,
                 center = Offset(stemX, stemTop)
             )
             drawCircle(
-                color = Color(0xFF90EE90),
-                radius = 8f,
+                color = Color(0xFF90EE90).copy(alpha = scale.coerceAtMost(1f)),
+                radius = 8f * scale,
                 center = Offset(stemX - 10f, stemTop + 5f)
             )
             drawCircle(
-                color = Color(0xFF90EE90),
-                radius = 8f,
+                color = Color(0xFF90EE90).copy(alpha = scale.coerceAtMost(1f)),
+                radius = 8f * scale,
                 center = Offset(stemX + 10f, stemTop + 5f)
             )
         }
         PlantState.WILTING -> {
             drawCircle(
-                color = Color(0xFF8FBC8F).copy(alpha = 0.6f),
-                radius = 8f,
+                color = Color(0xFF8FBC8F).copy(alpha = 0.6f * scale),
+                radius = 8f * scale,
                 center = Offset(stemX, stemTop + 5f)
             )
             drawCircle(
-                color = Color(0xFF8FBC8F).copy(alpha = 0.4f),
-                radius = 6f,
+                color = Color(0xFF8FBC8F).copy(alpha = 0.4f * scale),
+                radius = 6f * scale,
                 center = Offset(stemX - 8f, stemTop + 10f)
             )
         }
     }
 }
 
-private fun DrawScope.drawCandle(width: Float, height: Float) {
+private fun DrawScope.drawAnimatedCandle(width: Float, height: Float, alpha: Float) {
     val candleX = width * 0.8f
     val candleY = height * 0.6f
     val candleWidth = width * 0.02f
     val candleHeight = height * 0.06f
     
     drawRect(
-        color = Color(0xFFFFF8DC),
+        color = Color(0xFFFFF8DC).copy(alpha = alpha),
         topLeft = Offset(candleX, candleY),
         size = Size(candleWidth, candleHeight)
     )
     
     drawCircle(
-        color = Color(0xFFFFA500),
+        color = Color(0xFFFFA500).copy(alpha = alpha),
         radius = 6f,
         center = Offset(candleX + candleWidth / 2, candleY - 3f)
     )

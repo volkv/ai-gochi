@@ -29,6 +29,7 @@ import com.hackathon.echo.ui.theme.Calm
 import com.hackathon.echo.ui.theme.Joy
 import com.hackathon.echo.ui.theme.Sadness
 import com.hackathon.echo.ui.theme.Thoughtful
+import com.hackathon.echo.utils.AnimationUtils
 
 data class EmotionButtonData(
     val emotion: EmotionType,
@@ -99,16 +100,35 @@ private fun EmotionButton(
     var isPressed by remember { mutableStateOf(false) }
     
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.95f else 1f,
-        animationSpec = tween(100),
+        targetValue = if (isPressed) 0.92f else 1f,
+        animationSpec = if (isPressed) {
+            tween(
+                durationMillis = 80,
+                easing = AnimationUtils.ElegantEasing
+            )
+        } else {
+            tween(
+                durationMillis = 150,
+                easing = AnimationUtils.BouncyEasing
+            )
+        },
+        finishedListener = { if (isPressed) isPressed = false },
         label = "button_scale"
+    )
+    
+    val elevation by animateFloatAsState(
+        targetValue = if (isPressed) 2f else 8f,
+        animationSpec = tween(
+            durationMillis = 100,
+            easing = AnimationUtils.SmoothEasing
+        ),
+        label = "button_elevation"
     )
     
     Button(
         onClick = {
             isPressed = true
             onClick()
-            isPressed = false
         },
         modifier = modifier
             .scale(scale)
@@ -119,8 +139,8 @@ private fun EmotionButton(
             contentColor = Color.White
         ),
         elevation = ButtonDefaults.buttonElevation(
-            defaultElevation = 8.dp,
-            pressedElevation = 4.dp
+            defaultElevation = elevation.dp,
+            pressedElevation = 2.dp
         )
     ) {
         Column(
@@ -129,7 +149,7 @@ private fun EmotionButton(
         ) {
             Text(
                 text = emotionData.emoji,
-                fontSize = 24.sp
+                fontSize = (24 * scale).sp
             )
             Text(
                 text = emotionData.text,

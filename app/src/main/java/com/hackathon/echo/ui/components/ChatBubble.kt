@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.hackathon.echo.utils.AnimationUtils
 import kotlinx.coroutines.delay
 
 @Composable
@@ -39,19 +40,43 @@ fun ChatBubble(
     
     LaunchedEffect(isVisible) {
         if (isVisible) {
-            alpha.animateTo(1f, animationSpec = tween(300))
-            translateY.animateTo(0f, animationSpec = tween(300))
+            alpha.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    durationMillis = AnimationUtils.FAST_TRANSITION_DURATION,
+                    easing = AnimationUtils.ElegantEasing
+                )
+            )
+            translateY.animateTo(
+                targetValue = 0f,
+                animationSpec = tween(
+                    durationMillis = AnimationUtils.FAST_TRANSITION_DURATION,
+                    easing = AnimationUtils.BouncyEasing
+                )
+            )
             
             while (charIndex < message.length) {
                 displayedText = message.take(charIndex + 1)
                 charIndex++
-                delay(30)
+                delay(25) // Slightly faster typewriter effect
             }
             
             delay(5000)
             
-            alpha.animateTo(0f, animationSpec = tween(300))
-            translateY.animateTo(-20f, animationSpec = tween(300))
+            alpha.animateTo(
+                targetValue = 0f,
+                animationSpec = tween(
+                    durationMillis = AnimationUtils.FAST_TRANSITION_DURATION,
+                    easing = AnimationUtils.ElegantEasing
+                )
+            )
+            translateY.animateTo(
+                targetValue = -20f,
+                animationSpec = tween(
+                    durationMillis = AnimationUtils.FAST_TRANSITION_DURATION,
+                    easing = AnimationUtils.SmoothEasing
+                )
+            )
             onDismiss()
         } else {
             charIndex = 0
