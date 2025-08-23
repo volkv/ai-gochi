@@ -52,6 +52,7 @@ fun MainScreen() {
     val statsChangeBefore by viewModel.statsChangeBefore.collectAsState()
     val statsChangeAfter by viewModel.statsChangeAfter.collectAsState()
     val isPetTyping by viewModel.isPetTyping.collectAsState()
+    val isAutoDemo by viewModel.isAutoDemo.collectAsState()
     
     Box(
         modifier = Modifier.fillMaxSize()
@@ -145,8 +146,11 @@ fun MainScreen() {
                     viewModel.fillDemoPhrase(phrase)
                 }
             },
+            onStartAutoDemo = { viewModel.startAutoDemo() },
+            onStopAutoDemo = { viewModel.stopAutoDemo() },
             currentDemoStep = currentDemoStep,
-            isPetTyping = isPetTyping
+            isPetTyping = isPetTyping,
+            isAutoDemo = isAutoDemo
         )
         
         if (showStatsChange && statsChangeBefore != null && statsChangeAfter != null) {

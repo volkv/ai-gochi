@@ -84,8 +84,11 @@ fun ChatInterface(
     onSendMessage: (String) -> Unit,
     onClose: () -> Unit,
     onDemoPhrase: (String) -> Unit,
+    onStartAutoDemo: () -> Unit,
+    onStopAutoDemo: () -> Unit,
     currentDemoStep: Int = 0,
     isPetTyping: Boolean = false,
+    isAutoDemo: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     if (isOpen) {
@@ -107,8 +110,11 @@ fun ChatInterface(
                     onSendMessage = onSendMessage,
                     onClose = onClose,
                     onDemoPhrase = onDemoPhrase,
+                    onStartAutoDemo = onStartAutoDemo,
+                    onStopAutoDemo = onStopAutoDemo,
                     currentDemoStep = currentDemoStep,
                     isPetTyping = isPetTyping,
+                    isAutoDemo = isAutoDemo,
                     modifier = modifier
                 )
             }
@@ -122,8 +128,11 @@ private fun ChatContent(
     onSendMessage: (String) -> Unit,
     onClose: () -> Unit,
     onDemoPhrase: (String) -> Unit,
+    onStartAutoDemo: () -> Unit,
+    onStopAutoDemo: () -> Unit,
     currentDemoStep: Int,
     isPetTyping: Boolean,
+    isAutoDemo: Boolean,
     modifier: Modifier = Modifier
 ) {
     var inputText by remember { mutableStateOf("") }
@@ -236,12 +245,15 @@ private fun ChatContent(
             // Кнопка демо-ответа
             DemoButton(
                 currentDemoStep = currentDemoStep,
+                isAutoDemo = isAutoDemo,
                 onDemoPhrase = { phrase ->
                     inputText = phrase
                 },
                 onDemoClick = {
                     onDemoPhrase("")
                 },
+                onStartAutoDemo = onStartAutoDemo,
+                onStopAutoDemo = onStopAutoDemo,
                 modifier = Modifier.fillMaxWidth()
             )
             
@@ -354,8 +366,11 @@ private fun MessageBubble(
 @Composable
 private fun DemoButton(
     currentDemoStep: Int,
+    isAutoDemo: Boolean,
     onDemoPhrase: (String) -> Unit,
     onDemoClick: () -> Unit,
+    onStartAutoDemo: () -> Unit,
+    onStopAutoDemo: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val emotions = listOf(EmotionType.JOY, EmotionType.SADNESS, EmotionType.THOUGHTFUL, EmotionType.NEUTRAL)
@@ -417,27 +432,34 @@ private fun DemoButton(
         }
         
         Button(
-            onClick = { onDemoClick() },
+            onClick = {
+                if (isAutoDemo) {
+                    onStopAutoDemo()
+                } else {
+                    onStartAutoDemo()
+                }
+            },
             modifier = Modifier
                 .weight(1f)
                 .height(48.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = emotionColor,
+                containerColor = if (isAutoDemo) Color.Red else emotionColor,
                 contentColor = Color.White
             ),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            enabled = !isAutoDemo || true
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "▶",
+                    text = if (isAutoDemo) "⏸" else "▶",
                     fontSize = 16.sp
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = "Авто",
+                    text = if (isAutoDemo) "Стоп" else "Авто",
                     fontWeight = FontWeight.Medium
                 )
             }

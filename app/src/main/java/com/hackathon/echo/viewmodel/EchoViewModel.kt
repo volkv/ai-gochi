@@ -11,6 +11,7 @@ import com.hackathon.echo.ui.components.EmotionAnalytics
 import com.hackathon.echo.ui.components.calculateEmotionAnalytics
 import com.hackathon.echo.utils.SoundManager
 import kotlinx.coroutines.*
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -74,6 +75,11 @@ class EchoViewModel(private val context: Context) : ViewModel() {
     
     private val _isPetTyping = MutableStateFlow(false)
     val isPetTyping: StateFlow<Boolean> = _isPetTyping.asStateFlow()
+    
+    private val _isAutoDemo = MutableStateFlow(false)
+    val isAutoDemo: StateFlow<Boolean> = _isAutoDemo.asStateFlow()
+    
+    private var autoDemoJob: Job? = null
     
     init {
         _interactionHistory.value = emptyList()
@@ -296,7 +302,7 @@ class EchoViewModel(private val context: Context) : ViewModel() {
                 addChatMessage(ChatMessage(text = response, isFromUser = false))
                 
                 // Показываем модалку изменения статистик с задержкой
-                delay(1500)
+                delay(2000)
                 val statsAfter = _petStats.value
                 if (statsBefore != statsAfter) {
                     showStatsChangeModal(statsBefore, statsAfter)
@@ -323,18 +329,40 @@ class EchoViewModel(private val context: Context) : ViewModel() {
     }
     
     fun fillDemoPhrase(phrase: String) {
+        val detectedEmotion = detectEmotionFromText(phrase)
+        val scriptedResponse = DemoScriptedPhrases.getScriptedResponseForMessage(phrase, detectedEmotion)
+        
         addChatMessage(ChatMessage(text = phrase, isFromUser = true))
         
         val statsBefore = _petStats.value
-        processUserInput(phrase)
         
         CoroutineScope(Dispatchers.Main).launch {
-            delay(500)
+            delay(1000)
             
-            val response = _currentResponse.value
-            if (response.isNotEmpty()) {
-                addChatMessage(ChatMessage(text = response, isFromUser = false))
-            }
+            val previousState = _currentPetState.value
+            val newState = PetStates.getStateByEmotion(detectedEmotion)
+            
+            _currentPetState.value = newState
+            SoundManager.playEmotionSound(detectedEmotion)
+            
+            val response = scriptedResponse ?: memorySystem.getPersonalizedResponse(detectedEmotion, phrase)
+            _currentResponse.value = response
+            
+            addToHistory(
+                userInput = phrase,
+                detectedEmotion = detectedEmotion,
+                echoResponse = response,
+                petStateBefore = previousState,
+                petStateAfter = newState
+            )
+            
+            saveInteractionToPreferences(detectedEmotion, phrase)
+            updatePetStats(detectedEmotion, phrase)
+            updateStats()
+            
+            addChatMessage(ChatMessage(text = response, isFromUser = false))
+            
+            delay(2000)
             
             val statsAfter = _petStats.value
             if (statsBefore != statsAfter) {
@@ -349,6 +377,73 @@ class EchoViewModel(private val context: Context) : ViewModel() {
         val currentStep = _currentDemoStep.value
         val demoPhrase = DemoScriptedPhrases.getDemoPhraseByCycle(currentStep)
         fillDemoPhrase(demoPhrase)
+    }
+    
+    fun startAutoDemo() {
+        if (_isAutoDemo.value) return
+        
+        _isAutoDemo.value = true
+        _currentDemoStep.value = 0
+        
+        autoDemoJob = CoroutineScope(Dispatchers.Main).launch {
+            repeat(4) { step ->
+                if (!_isAutoDemo.value) return@launch
+                
+                val demoPair = DemoScriptedPhrases.getDemoMessagePairByCycle(step)
+                val emotion = DemoScriptedPhrases.getDemoEmotionByCycle(step)
+                
+                addChatMessage(ChatMessage(text = demoPair.userMessage, isFromUser = true))
+                
+                val statsBefore = _petStats.value
+                
+                delay(1500)
+                
+                val previousState = _currentPetState.value
+                val newState = PetStates.getStateByEmotion(emotion)
+                
+                _currentPetState.value = newState
+                SoundManager.playEmotionSound(emotion)
+                
+                val response = demoPair.petResponse
+                _currentResponse.value = response
+                
+                addToHistory(
+                    userInput = demoPair.userMessage,
+                    detectedEmotion = emotion,
+                    echoResponse = response,
+                    petStateBefore = previousState,
+                    petStateAfter = newState
+                )
+                
+                saveInteractionToPreferences(emotion, demoPair.userMessage)
+                updatePetStats(emotion, demoPair.userMessage)
+                updateStats()
+                
+                addChatMessage(ChatMessage(text = response, isFromUser = false))
+                
+                delay(2000)
+                
+                val statsAfter = _petStats.value
+                if (statsBefore != statsAfter) {
+                    showStatsChangeModal(statsBefore, statsAfter)
+                    delay(3000)
+                }
+                
+                _currentDemoStep.value = step + 1
+                
+                if (step < 3) {
+                    delay(1500)
+                }
+            }
+            
+            _isAutoDemo.value = false
+        }
+    }
+    
+    fun stopAutoDemo() {
+        _isAutoDemo.value = false
+        autoDemoJob?.cancel()
+        autoDemoJob = null
     }
     
     fun getCurrentDemoEmotion(): EmotionType {
@@ -574,6 +669,7 @@ class EchoViewModel(private val context: Context) : ViewModel() {
     
     override fun onCleared() {
         super.onCleared()
+        stopAutoDemo()
         SoundManager.release()
     }
 }
