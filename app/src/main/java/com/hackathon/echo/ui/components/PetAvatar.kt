@@ -24,8 +24,7 @@ fun PetAvatar(
         EmotionType.JOY -> R.drawable.h
         EmotionType.SADNESS -> R.drawable.s
         EmotionType.THOUGHTFUL -> R.drawable.m
-        EmotionType.CALM -> R.drawable.m
-        else -> R.drawable.n
+        EmotionType.NEUTRAL -> R.drawable.n
     }
     
     Box(

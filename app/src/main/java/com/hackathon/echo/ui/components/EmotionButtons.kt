@@ -25,8 +25,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hackathon.echo.data.EmotionType
-import com.hackathon.echo.ui.theme.Calm
 import com.hackathon.echo.ui.theme.Joy
+import com.hackathon.echo.ui.theme.Neutral
 import com.hackathon.echo.ui.theme.Sadness
 import com.hackathon.echo.ui.theme.Thoughtful
 import com.hackathon.echo.utils.AnimationUtils
@@ -63,10 +63,10 @@ fun EmotionButtons(
             color = Thoughtful
         ),
         EmotionButtonData(
-            emotion = EmotionType.CALM,
-            text = "Побыть в тишине",
-            emoji = "🍃",
-            color = Calm
+            emotion = EmotionType.NEUTRAL,
+            text = "Обычное состояние",
+            emoji = "😐",
+            color = Neutral
         )
     )
     

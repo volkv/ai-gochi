@@ -6,6 +6,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.hackathon.echo.data.*
+import com.hackathon.echo.ui.components.ChatMessage
 import com.hackathon.echo.ui.components.EmotionAnalytics
 import com.hackathon.echo.ui.components.calculateEmotionAnalytics
 import com.hackathon.echo.utils.SoundManager
@@ -50,6 +51,27 @@ class EchoViewModel(private val context: Context) : ViewModel() {
     private val _achievements = MutableLiveData<List<Achievement>>()
     val achievements: LiveData<List<Achievement>> = _achievements
     
+    private val _petStats = MutableStateFlow(preferences.getPetStats())
+    val petStats: StateFlow<PetStats> = _petStats.asStateFlow()
+    
+    private val _isChatOpen = MutableStateFlow(false)
+    val isChatOpen: StateFlow<Boolean> = _isChatOpen.asStateFlow()
+    
+    private val _chatMessages = MutableStateFlow<List<ChatMessage>>(emptyList())
+    val chatMessages: StateFlow<List<ChatMessage>> = _chatMessages.asStateFlow()
+    
+    private val _currentDemoStep = MutableStateFlow(0)
+    val currentDemoStep: StateFlow<Int> = _currentDemoStep.asStateFlow()
+    
+    private val _showStatsChange = MutableStateFlow(false)
+    val showStatsChange: StateFlow<Boolean> = _showStatsChange.asStateFlow()
+    
+    private val _statsChangeBefore = MutableStateFlow<PetStats?>(null)
+    val statsChangeBefore: StateFlow<PetStats?> = _statsChangeBefore.asStateFlow()
+    
+    private val _statsChangeAfter = MutableStateFlow<PetStats?>(null)
+    val statsChangeAfter: StateFlow<PetStats?> = _statsChangeAfter.asStateFlow()
+    
     init {
         _interactionHistory.value = emptyList()
         SoundManager.initialize(context)
@@ -92,6 +114,7 @@ class EchoViewModel(private val context: Context) : ViewModel() {
         )
         
         saveInteractionToPreferences(emotion, userInputText)
+        updatePetStats(emotion)
         updateStats()
         
         val reflectiveQuestion = memorySystem.getReflectiveQuestion(emotion)
@@ -130,6 +153,7 @@ class EchoViewModel(private val context: Context) : ViewModel() {
         )
         
         saveInteractionToPreferences(detectedEmotion, text)
+        updatePetStats(detectedEmotion)
         updateStats()
         
         val reflectiveQuestion = memorySystem.getReflectiveQuestion(detectedEmotion)
@@ -195,8 +219,134 @@ class EchoViewModel(private val context: Context) : ViewModel() {
         SoundManager.updateSettings(settings)
     }
     
+    fun updatePetStats(emotion: EmotionType) {
+        val currentStats = _petStats.value
+        val newStats = PetStats.increase(currentStats, emotion)
+        _petStats.value = newStats
+        
+        // Сохраняем статистики в preferences
+        preferences.savePetStats(newStats)
+    }
+    
+    fun decreasePetStats(emotion: EmotionType) {
+        val currentStats = _petStats.value
+        val newStats = PetStats.decrease(currentStats, emotion)
+        _petStats.value = newStats
+        
+        // Сохраняем статистики в preferences
+        preferences.savePetStats(newStats)
+    }
+    
+    fun getCurrentPetStats(): PetStats {
+        return _petStats.value
+    }
+    
     fun testVibration(emotion: EmotionType) {
         SoundManager.testVibration(emotion)
+    }
+    
+    fun openChat() {
+        _isChatOpen.value = true
+        if (_chatMessages.value.isEmpty()) {
+            addChatMessage(
+                ChatMessage(
+                    text = "Привет! 👋 Расскажи мне, что у тебя на душе?",
+                    isFromUser = false
+                )
+            )
+        }
+    }
+    
+    fun closeChat() {
+        _isChatOpen.value = false
+    }
+    
+    fun sendChatMessage(text: String) {
+        if (text.isBlank()) return
+        
+        val statsBefore = _petStats.value
+        addChatMessage(ChatMessage(text = text.trim(), isFromUser = true))
+        
+        processUserInput(text.trim())
+        
+        CoroutineScope(Dispatchers.Main).launch {
+            delay(500)
+            
+            val response = _currentResponse.value
+            if (response.isNotEmpty()) {
+                addChatMessage(ChatMessage(text = response, isFromUser = false))
+            }
+            
+            val statsAfter = _petStats.value
+            if (statsBefore != statsAfter) {
+                showStatsChangeModal(statsBefore, statsAfter)
+            }
+        }
+    }
+    
+    fun addChatMessage(message: ChatMessage) {
+        val currentMessages = _chatMessages.value.toMutableList()
+        currentMessages.add(message)
+        _chatMessages.value = currentMessages
+    }
+    
+    fun clearChatHistory() {
+        _chatMessages.value = emptyList()
+        _currentDemoStep.value = 0
+    }
+    
+    fun nextDemoStep() {
+        _currentDemoStep.value = (_currentDemoStep.value + 1) % 4
+    }
+    
+    fun fillDemoPhrase(phrase: String) {
+        addChatMessage(ChatMessage(text = phrase, isFromUser = true))
+        
+        val statsBefore = _petStats.value
+        processUserInput(phrase)
+        
+        CoroutineScope(Dispatchers.Main).launch {
+            delay(500)
+            
+            val response = _currentResponse.value
+            if (response.isNotEmpty()) {
+                addChatMessage(ChatMessage(text = response, isFromUser = false))
+            }
+            
+            val statsAfter = _petStats.value
+            if (statsBefore != statsAfter) {
+                showStatsChangeModal(statsBefore, statsAfter)
+            }
+            
+            nextDemoStep()
+        }
+    }
+    
+    fun fillDemoPhrase() {
+        val currentStep = _currentDemoStep.value
+        val demoPhrase = DemoScriptedPhrases.getDemoPhraseByCycle(currentStep)
+        fillDemoPhrase(demoPhrase)
+    }
+    
+    fun getCurrentDemoEmotion(): EmotionType {
+        return DemoScriptedPhrases.getDemoEmotionByCycle(_currentDemoStep.value)
+    }
+    
+    fun showStatsChangeModal(before: PetStats, after: PetStats) {
+        _statsChangeBefore.value = before
+        _statsChangeAfter.value = after
+        _showStatsChange.value = true
+        
+        CoroutineScope(Dispatchers.Main).launch {
+            delay(3000)
+            hideStatsChangeModal()
+        }
+    }
+    
+    fun hideStatsChangeModal() {
+        _showStatsChange.value = false
+        _statsChangeBefore.value = null
+        _statsChangeAfter.value = null
     }
     
     fun clearAllData() {
@@ -265,15 +415,11 @@ class EchoViewModel(private val context: Context) : ViewModel() {
             "вопрос", "почему", "задаюсь", "мысли", "анализ", "понимание", "мудрость"
         )
         
-        val calmKeywords = listOf(
-            "спокойно", "тишина", "покой", "умиротворен", "благодарен", "медитация",
-            "релакс", "дышу", "наслаждаюсь", "гармония", "баланс", "мир", "zen"
-        )
+
         
         var joyScore = 0
         var sadnessScore = 0
         var thoughtfulScore = 0
-        var calmScore = 0
         
         joyKeywords.forEach { keyword ->
             if (lowercaseText.contains(keyword)) joyScore++
@@ -287,18 +433,13 @@ class EchoViewModel(private val context: Context) : ViewModel() {
             if (lowercaseText.contains(keyword)) thoughtfulScore++
         }
         
-        calmKeywords.forEach { keyword ->
-            if (lowercaseText.contains(keyword)) calmScore++
-        }
-        
-        val maxScore = maxOf(joyScore, sadnessScore, thoughtfulScore, calmScore)
+        val maxScore = maxOf(joyScore, sadnessScore, thoughtfulScore)
         
         return when {
             maxScore == 0 -> EmotionType.NEUTRAL
             joyScore == maxScore -> EmotionType.JOY
             sadnessScore == maxScore -> EmotionType.SADNESS  
             thoughtfulScore == maxScore -> EmotionType.THOUGHTFUL
-            calmScore == maxScore -> EmotionType.CALM
             else -> EmotionType.NEUTRAL
         }
     }
@@ -337,11 +478,7 @@ class EchoViewModel(private val context: Context) : ViewModel() {
             } else {
                 ResponseBank.getRandomResponse(emotion)
             }
-            EmotionType.CALM -> if (isRepeat) {
-                "Твое спокойствие становится еще глубже... 🧘"
-            } else {
-                ResponseBank.getRandomResponse(emotion)
-            }
+
             else -> ResponseBank.getRandomResponse(emotion)
         }
     }
@@ -351,7 +488,7 @@ class EchoViewModel(private val context: Context) : ViewModel() {
             EmotionType.JOY -> "Так много деталей! Я чувствую, как важна для тебя эта радость! ⭐"
             EmotionType.SADNESS -> "Спасибо, что доверяешь мне свои переживания. Я внимательно слушаю... 💙"
             EmotionType.THOUGHTFUL -> "Какие глубокие размышления! Твои мысли заставляют и меня задуматься 💭"
-            EmotionType.CALM -> "Твое подробное описание успокаивает и меня. Мы в гармонии 🌸"
+
             else -> "Спасибо за то, что так подробно поделился со мной!"
         }
     }
@@ -388,7 +525,7 @@ class EchoViewModel(private val context: Context) : ViewModel() {
             EmotionType.JOY -> "Поделиться радостью"
             EmotionType.SADNESS -> "Рассказать о тревоге"
             EmotionType.THOUGHTFUL -> "Поразмышлять"
-            EmotionType.CALM -> "Побыть в тишине"
+
             EmotionType.NEUTRAL -> "Нейтрально"
         }
     }

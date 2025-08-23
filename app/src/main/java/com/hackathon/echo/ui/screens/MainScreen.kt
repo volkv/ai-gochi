@@ -4,35 +4,49 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hackathon.echo.data.EmotionType
-import com.hackathon.echo.data.PetState
-import com.hackathon.echo.data.PetStates
-import com.hackathon.echo.data.WeatherState
-import com.hackathon.echo.data.PlantState
-import com.hackathon.echo.data.RoomLighting
 import com.hackathon.echo.ui.components.ChatBubble
-import com.hackathon.echo.ui.components.EmotionButtons
+import com.hackathon.echo.ui.components.ChatInterface
 import com.hackathon.echo.ui.components.PetAvatar
+import com.hackathon.echo.ui.components.PetStatsBar
 import com.hackathon.echo.ui.components.RoomBackground
-import com.hackathon.echo.ui.theme.Calm
-import com.hackathon.echo.ui.theme.Joy
-import com.hackathon.echo.ui.theme.Sadness
+import com.hackathon.echo.ui.components.StatsChangeModal
 import com.hackathon.echo.ui.theme.Thoughtful
+import com.hackathon.echo.viewmodel.EchoViewModel
+import com.hackathon.echo.viewmodel.EchoViewModelFactory
 
 @Composable
 fun MainScreen() {
-    var petState by remember { mutableStateOf(PetStates.neutralState) }
-    var chatMessage by remember { mutableStateOf("") }
-    var showChatBubble by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val viewModel: EchoViewModel = viewModel(factory = EchoViewModelFactory(context))
+    
+    val petState by viewModel.currentPetState.collectAsState()
+    val petStats by viewModel.petStats.collectAsState()
+    val currentResponse by viewModel.currentResponse.collectAsState()
+    val isChatOpen by viewModel.isChatOpen.collectAsState()
+    val chatMessages by viewModel.chatMessages.collectAsState()
+    val currentDemoStep by viewModel.currentDemoStep.collectAsState()
+    val showStatsChange by viewModel.showStatsChange.collectAsState()
+    val statsChangeBefore by viewModel.statsChangeBefore.collectAsState()
+    val statsChangeAfter by viewModel.statsChangeAfter.collectAsState()
     
     Box(
         modifier = Modifier.fillMaxSize()
@@ -49,6 +63,7 @@ fun MainScreen() {
             verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Питомец в центре экрана
             Box(
                 modifier = Modifier.weight(1f),
                 contentAlignment = Alignment.Center
@@ -57,52 +72,69 @@ fun MainScreen() {
                     petState = petState
                 )
                 
-                if (showChatBubble) {
+                if (currentResponse.isNotEmpty()) {
                     Box(
                         modifier = Modifier.align(Alignment.TopCenter)
                     ) {
                         ChatBubble(
-                            message = chatMessage,
-                            isVisible = showChatBubble,
-                            onDismiss = { showChatBubble = false }
+                            message = currentResponse,
+                            isVisible = currentResponse.isNotEmpty(),
+                            onDismiss = { /* Пусто, сообщение исчезнет автоматически */ }
                         )
                     }
                 }
             }
             
-            EmotionButtons(
-                onEmotionSelected = { emotion ->
-                    val (newPetState, message) = handleEmotionSelection(emotion)
-                    petState = newPetState
-                    chatMessage = message
-                    showChatBubble = true
+            // Шкалы состояния питомца
+            PetStatsBar(
+                petStats = petStats,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+            
+            // Кнопка чата
+            Button(
+                onClick = { viewModel.openChat() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Thoughtful,
+                    contentColor = Color.White
+                )
+            ) {
+                Text(
+                    text = "💬 Рассказать",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+        
+        ChatInterface(
+            isOpen = isChatOpen,
+            messages = chatMessages,
+            onSendMessage = { message ->
+                viewModel.sendChatMessage(message)
+            },
+            onClose = { viewModel.closeChat() },
+            onDemoPhrase = { phrase ->
+                if (phrase.isEmpty()) {
+                    viewModel.fillDemoPhrase()
+                } else {
+                    viewModel.fillDemoPhrase(phrase)
                 }
+            },
+            currentDemoStep = currentDemoStep
+        )
+        
+        if (showStatsChange && statsChangeBefore != null && statsChangeAfter != null) {
+            StatsChangeModal(
+                statsBefore = statsChangeBefore!!,
+                statsAfter = statsChangeAfter!!,
+                onDismiss = { viewModel.hideStatsChangeModal() }
             )
         }
     }
 }
 
-private fun handleEmotionSelection(emotion: EmotionType): Pair<PetState, String> {
-    return when (emotion) {
-        EmotionType.JOY -> Pair(
-            PetStates.joyState,
-            "Твоя радость заряжает меня энергией! ✨"
-        )
-        EmotionType.SADNESS -> Pair(
-            PetStates.sadnessState,
-            "Я здесь, чтобы тебя поддержать 💙"
-        )
-        EmotionType.THOUGHTFUL -> Pair(
-            PetStates.thoughtfulState,
-            "Размышления помогают нам расти 🤔"
-        )
-        EmotionType.CALM -> Pair(
-            PetStates.calmState,
-            "В тишине мы находим покой 🍃"
-        )
-        EmotionType.NEUTRAL -> Pair(
-            PetStates.neutralState,
-            "Привет! Как дела?"
-        )
-    }
-}

@@ -415,7 +415,7 @@ private fun getEmotionColor(emotion: EmotionType): Color {
         EmotionType.JOY -> Color(0xFFFFD700)
         EmotionType.SADNESS -> Color(0xFF4169E1)
         EmotionType.THOUGHTFUL -> Color(0xFF9370DB)
-        EmotionType.CALM -> Color(0xFF32CD32)
+
         EmotionType.NEUTRAL -> Color(0xFFCCCCCC)
     }
 }
@@ -425,7 +425,7 @@ private fun getEmotionName(emotion: EmotionType): String {
         EmotionType.JOY -> "Радость"
         EmotionType.SADNESS -> "Грусть"
         EmotionType.THOUGHTFUL -> "Размышления"
-        EmotionType.CALM -> "Спокойствие"
+
         EmotionType.NEUTRAL -> "Нейтрально"
     }
 }
@@ -435,7 +435,7 @@ private fun getEmotionEmoji(emotion: EmotionType): String {
         EmotionType.JOY -> "😊"
         EmotionType.SADNESS -> "😢"
         EmotionType.THOUGHTFUL -> "🤔"
-        EmotionType.CALM -> "😌"
+
         EmotionType.NEUTRAL -> "😐"
     }
 }
@@ -467,8 +467,7 @@ fun calculateEmotionAnalytics(
     
     val dominantEmotion = emotionCounts.maxByOrNull { it.value }?.key
     
-    val positiveEmotions = (emotionCounts[EmotionType.JOY] ?: 0) + 
-                          (emotionCounts[EmotionType.CALM] ?: 0)
+    val positiveEmotions = emotionCounts[EmotionType.JOY] ?: 0
     val negativeEmotions = emotionCounts[EmotionType.SADNESS] ?: 0
     val neutralEmotions = (emotionCounts[EmotionType.NEUTRAL] ?: 0) + 
                          (emotionCounts[EmotionType.THOUGHTFUL] ?: 0)

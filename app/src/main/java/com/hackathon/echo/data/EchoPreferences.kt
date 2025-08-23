@@ -49,6 +49,7 @@ class EchoPreferences(context: Context) {
         private const val KEY_USAGE_STATS = "usage_stats"
         private const val KEY_PERSONALIZED_GREETINGS_ENABLED = "personalized_greetings"
         private const val KEY_TOTAL_INTERACTIONS = "total_interactions"
+        private const val KEY_PET_STATS = "pet_stats"
         
         private const val MAX_STORED_EMOTIONS = 20
     }
@@ -200,6 +201,20 @@ class EchoPreferences(context: Context) {
     
     fun setPersonalizedGreetingsEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_PERSONALIZED_GREETINGS_ENABLED, enabled).apply()
+    }
+    
+    fun savePetStats(petStats: PetStats) {
+        val jsonString = json.encodeToString(petStats)
+        prefs.edit().putString(KEY_PET_STATS, jsonString).apply()
+    }
+    
+    fun getPetStats(): PetStats {
+        val jsonString = prefs.getString(KEY_PET_STATS, null) ?: return PetStats.getDefault()
+        return try {
+            json.decodeFromString<PetStats>(jsonString)
+        } catch (e: Exception) {
+            PetStats.getDefault()
+        }
     }
     
     private fun getDefaultAchievements(): List<Achievement> {

@@ -75,7 +75,7 @@ fun animatedStateTransition(
             EmotionType.JOY -> 1.1f
             EmotionType.SADNESS -> 0.9f
             EmotionType.THOUGHTFUL -> 1.0f
-            EmotionType.CALM -> 1.02f
+
             EmotionType.NEUTRAL -> 1.0f
         },
         animationSpec = animationSpec,
@@ -186,7 +186,7 @@ fun animatedParticleEffects(
             EmotionType.JOY -> 1.0f
             EmotionType.SADNESS -> 0.4f
             EmotionType.THOUGHTFUL -> 0.7f
-            EmotionType.CALM -> 0.2f
+
             EmotionType.NEUTRAL -> 0.0f
         },
         animationSpec = AnimationUtils.smoothTransition,
@@ -198,7 +198,7 @@ fun animatedParticleEffects(
             EmotionType.JOY -> 3.0f
             EmotionType.SADNESS -> 1.0f
             EmotionType.THOUGHTFUL -> 1.5f
-            EmotionType.CALM -> 0.5f
+
             EmotionType.NEUTRAL -> 0.0f
         },
         animationSpec = AnimationUtils.fastTransition,
@@ -210,7 +210,7 @@ fun animatedParticleEffects(
             EmotionType.JOY -> 1.2f
             EmotionType.SADNESS -> 0.8f
             EmotionType.THOUGHTFUL -> 1.1f
-            EmotionType.CALM -> 0.6f
+
             EmotionType.NEUTRAL -> 0.0f
         },
         animationSpec = AnimationUtils.smoothTransition,

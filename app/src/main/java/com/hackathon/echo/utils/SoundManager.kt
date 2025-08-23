@@ -213,7 +213,7 @@ object SoundManager {
             EmotionType.JOY -> SoundType.JOY_CHIME
             EmotionType.SADNESS -> SoundType.SAD_AMBIENT
             EmotionType.THOUGHTFUL -> SoundType.THOUGHTFUL_MEDITATION
-            EmotionType.CALM -> SoundType.CALM_NATURE
+
             EmotionType.NEUTRAL -> SoundType.NONE
         }
     }
@@ -223,7 +223,7 @@ object SoundManager {
             EmotionType.JOY -> VibrationPattern.JOY_PATTERN
             EmotionType.SADNESS -> VibrationPattern.SADNESS_PATTERN
             EmotionType.THOUGHTFUL -> VibrationPattern.THOUGHTFUL_PATTERN
-            EmotionType.CALM -> VibrationPattern.CALM_PATTERN
+
             EmotionType.NEUTRAL -> VibrationPattern.NEUTRAL_PATTERN
         }
     }

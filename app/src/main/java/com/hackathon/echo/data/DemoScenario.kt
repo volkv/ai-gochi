@@ -39,11 +39,11 @@ object DemoScenario {
             presenterNote = "Демонстрация размышлений - фиолетовая аура, медитативная поза, свеча"
         ),
         DemoStep(
-            action = "calm_demo",
-            inputText = "Наслаждаюсь тишиной и покоем",
-            expectedEmotion = EmotionType.CALM,
+            action = "neutral_demo",
+            inputText = "Обычный день, ничего особенного",
+            expectedEmotion = EmotionType.NEUTRAL,
             duration = 55,
-            presenterNote = "Демонстрация спокойствия - зеленые тона, дыхательная анимация, гармония"
+            presenterNote = "Демонстрация нейтрального состояния - спокойные тона, умиротворенность"
         ),
         DemoStep(
             action = "transition_demo",
@@ -99,17 +99,6 @@ object DemoScriptedPhrases {
         "Погружен в мысли о вечных вопросах бытия"
     )
     
-    val calmPhrases = listOf(
-        "Наслаждаюсь тишиной и покоем",
-        "Медитирую и чувствую гармонию",
-        "Благодарен за этот спокойный момент",
-        "Слушаю звуки природы и расслабляюсь",
-        "Практикую осознанность здесь и сейчас",
-        "Дышу глубоко и отпускаю напряжение",
-        "Ценю простые радости жизни",
-        "Нахожусь в состоянии внутреннего равновесия"
-    )
-    
     val neutralPhrases = listOf(
         "Привет, как дела?",
         "Что нового происходит?",
@@ -126,9 +115,25 @@ object DemoScriptedPhrases {
             EmotionType.JOY -> joyPhrases
             EmotionType.SADNESS -> sadnessPhrases
             EmotionType.THOUGHTFUL -> thoughtfulPhrases
-            EmotionType.CALM -> calmPhrases
             EmotionType.NEUTRAL -> neutralPhrases
         }
+    }
+    
+    val demoCycleEmotions = listOf(
+        EmotionType.JOY,
+        EmotionType.SADNESS,
+        EmotionType.THOUGHTFUL,
+        EmotionType.NEUTRAL
+    )
+    
+    fun getDemoPhraseByCycle(step: Int): String {
+        val emotionIndex = step % demoCycleEmotions.size
+        val emotion = demoCycleEmotions[emotionIndex]
+        return getRandomPhrase(emotion)
+    }
+    
+    fun getDemoEmotionByCycle(step: Int): EmotionType {
+        return demoCycleEmotions[step % demoCycleEmotions.size]
     }
     
     fun getRandomPhrase(emotion: EmotionType): String {

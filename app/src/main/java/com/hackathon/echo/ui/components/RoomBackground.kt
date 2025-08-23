@@ -19,8 +19,7 @@ fun RoomBackground(
         EmotionType.JOY -> R.drawable.h_b
         EmotionType.SADNESS -> R.drawable.s_b
         EmotionType.THOUGHTFUL -> R.drawable.m_b
-        EmotionType.CALM -> R.drawable.m_b
-        else -> R.drawable.n_b
+        EmotionType.NEUTRAL -> R.drawable.n_b
     }
     
     Image(

@@ -6,7 +6,6 @@ enum class EmotionType {
     JOY,
     SADNESS,
     THOUGHTFUL,
-    CALM,
     NEUTRAL
 }
 
@@ -66,14 +65,7 @@ object PetStates {
         weatherState = WeatherState.CLEAR
     )
     
-    val calmState = PetState(
-        emotion = EmotionType.CALM,
-        color = Color(0xFF32CD32),
-        expression = "умиротворенная полуулыбка",
-        roomLighting = RoomLighting.BALANCED,
-        plantState = PlantState.NORMAL,
-        weatherState = WeatherState.CLEAR
-    )
+
     
     val neutralState = PetState(
         emotion = EmotionType.NEUTRAL,
@@ -89,7 +81,6 @@ object PetStates {
             EmotionType.JOY -> joyState
             EmotionType.SADNESS -> sadnessState
             EmotionType.THOUGHTFUL -> thoughtfulState
-            EmotionType.CALM -> calmState
             EmotionType.NEUTRAL -> neutralState
         }
     }

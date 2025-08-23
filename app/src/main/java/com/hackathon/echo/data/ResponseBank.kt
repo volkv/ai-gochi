@@ -45,6 +45,8 @@ object ResponseBank {
         "Наслаждаемся моментом вместе... 🌙"
     )
     
+
+    
     val neutralResponses = listOf(
         "Привет! Как дела?",
         "Расскажи, что у тебя нового?",
@@ -61,7 +63,6 @@ object ResponseBank {
             EmotionType.JOY -> joyResponses
             EmotionType.SADNESS -> sadnessResponses
             EmotionType.THOUGHTFUL -> thoughtfulResponses
-            EmotionType.CALM -> calmResponses
             EmotionType.NEUTRAL -> neutralResponses
         }
         return responses.random()
@@ -72,7 +73,6 @@ object ResponseBank {
             EmotionType.JOY -> joyResponses
             EmotionType.SADNESS -> sadnessResponses
             EmotionType.THOUGHTFUL -> thoughtfulResponses
-            EmotionType.CALM -> calmResponses
             EmotionType.NEUTRAL -> neutralResponses
         }
         return responses.getOrElse(index) { responses.random() }
@@ -83,7 +83,6 @@ object ResponseBank {
             EmotionType.JOY -> joyResponses
             EmotionType.SADNESS -> sadnessResponses
             EmotionType.THOUGHTFUL -> thoughtfulResponses
-            EmotionType.CALM -> calmResponses
             EmotionType.NEUTRAL -> neutralResponses
         }
     }
