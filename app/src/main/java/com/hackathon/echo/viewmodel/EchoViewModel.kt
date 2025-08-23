@@ -1,12 +1,15 @@
 package com.hackathon.echo.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.hackathon.echo.data.EmotionType
-import com.hackathon.echo.data.PetState
-import com.hackathon.echo.data.PetStates
-import com.hackathon.echo.data.ResponseBank
+import androidx.lifecycle.ViewModelProvider
+import com.hackathon.echo.data.*
+import com.hackathon.echo.ui.components.EmotionAnalytics
+import com.hackathon.echo.ui.components.calculateEmotionAnalytics
+import com.hackathon.echo.utils.SoundManager
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,7 +24,10 @@ data class InteractionHistory(
     val petStateAfter: PetState
 )
 
-class EchoViewModel : ViewModel() {
+class EchoViewModel(private val context: Context) : ViewModel() {
+    
+    private val preferences = EchoPreferences(context)
+    private val memorySystem = MemorySystem(context)
     
     private val _currentPetState = MutableStateFlow(PetStates.neutralState)
     val currentPetState: StateFlow<PetState> = _currentPetState.asStateFlow()
@@ -35,25 +41,68 @@ class EchoViewModel : ViewModel() {
     private val _isProcessingInput = MutableStateFlow(false)
     val isProcessingInput: StateFlow<Boolean> = _isProcessingInput.asStateFlow()
     
+    private val _personalizedGreeting = MutableStateFlow<PersonalizedGreeting?>(null)
+    val personalizedGreeting: StateFlow<PersonalizedGreeting?> = _personalizedGreeting.asStateFlow()
+    
+    private val _emotionAnalytics = MutableStateFlow<EmotionAnalytics?>(null)
+    val emotionAnalytics: StateFlow<EmotionAnalytics?> = _emotionAnalytics.asStateFlow()
+    
+    private val _achievements = MutableLiveData<List<Achievement>>()
+    val achievements: LiveData<List<Achievement>> = _achievements
+    
     init {
         _interactionHistory.value = emptyList()
+        SoundManager.initialize(context)
+        initializeAppSession()
+    }
+    
+    private fun initializeAppSession() {
+        preferences.updateFriendshipDays()
+        generateInitialGreeting()
+        updateEmotionAnalytics()
+        _achievements.value = preferences.getAchievements()
+    }
+    
+    private fun generateInitialGreeting() {
+        val greeting = memorySystem.generatePersonalizedGreeting()
+        _personalizedGreeting.value = greeting
+        if (greeting.shouldShow) {
+            _currentResponse.value = greeting.greeting
+        }
     }
     
     fun processEmotionButton(emotion: EmotionType) {
         val previousState = _currentPetState.value
         val newState = PetStates.getStateByEmotion(emotion)
-        val response = ResponseBank.getRandomResponse(emotion)
+        val response = memorySystem.getPersonalizedResponse(emotion, "Кнопка эмоций")
         
         _currentPetState.value = newState
         _currentResponse.value = response
         
+        SoundManager.playEmotionSound(emotion)
+        
+        val userInputText = "Нажата кнопка: ${getEmotionButtonText(emotion)}"
+        
         addToHistory(
-            userInput = "Нажата кнопка: ${getEmotionButtonText(emotion)}",
+            userInput = userInputText,
             detectedEmotion = emotion,
             echoResponse = response,
             petStateBefore = previousState,
             petStateAfter = newState
         )
+        
+        saveInteractionToPreferences(emotion, userInputText)
+        updateStats()
+        
+        val reflectiveQuestion = memorySystem.getReflectiveQuestion(emotion)
+        if (reflectiveQuestion != null && _currentResponse.value == response) {
+            CoroutineScope(Dispatchers.Main).launch {
+                delay(3000)
+                if (_currentResponse.value == response) {
+                    _currentResponse.value = reflectiveQuestion
+                }
+            }
+        }
     }
     
     fun processUserInput(text: String) {
@@ -64,11 +113,13 @@ class EchoViewModel : ViewModel() {
         val previousState = _currentPetState.value
         val detectedEmotion = detectEmotionFromText(text)
         val newState = PetStates.getStateByEmotion(detectedEmotion)
-        val response = getContextualResponse(text, detectedEmotion)
+        val response = memorySystem.getPersonalizedResponse(detectedEmotion, text)
         
         _currentPetState.value = newState
         _currentResponse.value = response
         _isProcessingInput.value = false
+        
+        SoundManager.playEmotionSound(detectedEmotion)
         
         addToHistory(
             userInput = text,
@@ -77,6 +128,19 @@ class EchoViewModel : ViewModel() {
             petStateBefore = previousState,
             petStateAfter = newState
         )
+        
+        saveInteractionToPreferences(detectedEmotion, text)
+        updateStats()
+        
+        val reflectiveQuestion = memorySystem.getReflectiveQuestion(detectedEmotion)
+        if (reflectiveQuestion != null) {
+            CoroutineScope(Dispatchers.Main).launch {
+                delay(4000)
+                if (_currentResponse.value == response) {
+                    _currentResponse.value = reflectiveQuestion
+                }
+            }
+        }
     }
     
     fun resetToNeutral() {
@@ -100,6 +164,87 @@ class EchoViewModel : ViewModel() {
         val history = _interactionHistory.value ?: return emptyMap()
         return history.groupBy { it.detectedEmotion }
             .mapValues { it.value.size }
+    }
+    
+    fun getFriendshipDays(): Int {
+        return preferences.getFriendshipDays()
+    }
+    
+    fun getStoredEmotionHistory(): List<StoredEmotion> {
+        return preferences.getEmotionHistory()
+    }
+    
+    fun getUnlockedAchievements(): List<Achievement> {
+        return preferences.getAchievements().filter { it.isUnlocked }
+    }
+    
+    fun refreshGreeting() {
+        generateInitialGreeting()
+    }
+    
+    fun getUsageStats(): UsageStats {
+        return preferences.getUsageStats()
+    }
+    
+    fun updateSoundSettings(soundEnabled: Boolean = true, vibrationEnabled: Boolean = true, volume: Float = 0.5f) {
+        val settings = com.hackathon.echo.utils.SoundSettings(
+            isSoundEnabled = soundEnabled,
+            isVibrationEnabled = vibrationEnabled,
+            soundVolume = volume
+        )
+        SoundManager.updateSettings(settings)
+    }
+    
+    fun testVibration(emotion: EmotionType) {
+        SoundManager.testVibration(emotion)
+    }
+    
+    fun clearAllData() {
+        preferences.clearAllData()
+        _interactionHistory.value = emptyList()
+        _currentResponse.value = "Привет! Я Эхо, приятно познакомиться!"
+        _personalizedGreeting.value = null
+        _emotionAnalytics.value = null
+        _achievements.value = preferences.getAchievements()
+        updateEmotionAnalytics()
+    }
+    
+    private fun saveInteractionToPreferences(emotion: EmotionType, userInput: String) {
+        preferences.saveEmotionToHistory(emotion, userInput)
+    }
+    
+    private fun updateStats() {
+        val emotionStats = getEmotionStatistics()
+        val totalInteractions = getTotalInteractionsCount()
+        preferences.updateUsageStats(emotionStats, totalInteractions)
+        
+        val newAchievements = preferences.getAchievements()
+        val oldAchievements = _achievements.value ?: emptyList()
+        
+        val newlyUnlocked = newAchievements.filter { new ->
+            new.isUnlocked && oldAchievements.none { old -> old.id == new.id && old.isUnlocked }
+        }
+        
+        if (newlyUnlocked.isNotEmpty()) {
+            _achievements.value = newAchievements
+            newlyUnlocked.forEach { achievement ->
+                CoroutineScope(Dispatchers.Main).launch {
+                    delay(1000)
+                    _currentResponse.value = "🎉 Достижение разблокировано: ${achievement.name}! ${achievement.description}"
+                }
+            }
+        } else {
+            _achievements.value = newAchievements
+        }
+        
+        updateEmotionAnalytics()
+    }
+    
+    private fun updateEmotionAnalytics() {
+        val emotionStats = getEmotionStatistics()
+        val friendshipDays = preferences.getFriendshipDays()
+        val analytics = calculateEmotionAnalytics(emotionStats, friendshipDays)
+        _emotionAnalytics.value = analytics
     }
     
     private fun detectEmotionFromText(text: String): EmotionType {
@@ -246,5 +391,20 @@ class EchoViewModel : ViewModel() {
             EmotionType.CALM -> "Побыть в тишине"
             EmotionType.NEUTRAL -> "Нейтрально"
         }
+    }
+    
+    override fun onCleared() {
+        super.onCleared()
+        SoundManager.release()
+    }
+}
+
+class EchoViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(EchoViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return EchoViewModel(context) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
