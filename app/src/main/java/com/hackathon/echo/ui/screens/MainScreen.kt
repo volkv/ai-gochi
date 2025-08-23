@@ -13,16 +13,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.hackathon.echo.data.EmotionType
+import com.hackathon.echo.data.PetState
+import com.hackathon.echo.data.PetStates
+import com.hackathon.echo.data.WeatherState
+import com.hackathon.echo.data.PlantState
+import com.hackathon.echo.data.RoomLighting
 import com.hackathon.echo.ui.components.ChatBubble
 import com.hackathon.echo.ui.components.EmotionButtons
-import com.hackathon.echo.ui.components.EmotionType
 import com.hackathon.echo.ui.components.PetAvatar
-import com.hackathon.echo.ui.components.PetState
 import com.hackathon.echo.ui.components.RoomBackground
-import com.hackathon.echo.ui.components.RoomState
-import com.hackathon.echo.ui.components.WeatherState
-import com.hackathon.echo.ui.components.PlantState
-import com.hackathon.echo.ui.components.RoomLighting
 import com.hackathon.echo.ui.theme.Calm
 import com.hackathon.echo.ui.theme.Joy
 import com.hackathon.echo.ui.theme.Sadness
@@ -30,8 +30,7 @@ import com.hackathon.echo.ui.theme.Thoughtful
 
 @Composable
 fun MainScreen() {
-    var petState by remember { mutableStateOf(PetState()) }
-    var roomState by remember { mutableStateOf(RoomState()) }
+    var petState by remember { mutableStateOf(PetStates.neutralState) }
     var chatMessage by remember { mutableStateOf("") }
     var showChatBubble by remember { mutableStateOf(false) }
     
@@ -39,7 +38,7 @@ fun MainScreen() {
         modifier = Modifier.fillMaxSize()
     ) {
         RoomBackground(
-            roomState = roomState,
+            petState = petState,
             modifier = Modifier.fillMaxSize()
         )
         
@@ -73,9 +72,8 @@ fun MainScreen() {
             
             EmotionButtons(
                 onEmotionSelected = { emotion ->
-                    val (newPetState, newRoomState, message) = handleEmotionSelection(emotion)
+                    val (newPetState, message) = handleEmotionSelection(emotion)
                     petState = newPetState
-                    roomState = newRoomState
                     chatMessage = message
                     showChatBubble = true
                 }
@@ -84,48 +82,26 @@ fun MainScreen() {
     }
 }
 
-private fun handleEmotionSelection(emotion: EmotionType): Triple<PetState, RoomState, String> {
+private fun handleEmotionSelection(emotion: EmotionType): Pair<PetState, String> {
     return when (emotion) {
-        EmotionType.JOY -> Triple(
-            PetState(emotion = emotion, color = Joy),
-            RoomState(
-                weather = WeatherState.SUNNY,
-                plant = PlantState.BLOOMING,
-                lighting = RoomLighting.WARM
-            ),
+        EmotionType.JOY -> Pair(
+            PetStates.joyState,
             "Твоя радость заряжает меня энергией! ✨"
         )
-        EmotionType.SADNESS -> Triple(
-            PetState(emotion = emotion, color = Sadness),
-            RoomState(
-                weather = WeatherState.CLOUDY,
-                plant = PlantState.WITHERING,
-                lighting = RoomLighting.COOL
-            ),
+        EmotionType.SADNESS -> Pair(
+            PetStates.sadnessState,
             "Я здесь, чтобы тебя поддержать 💙"
         )
-        EmotionType.THOUGHTFUL -> Triple(
-            PetState(emotion = emotion, color = Thoughtful),
-            RoomState(
-                weather = WeatherState.CLOUDY,
-                plant = PlantState.NORMAL,
-                lighting = RoomLighting.NEUTRAL,
-                hasCandle = true
-            ),
+        EmotionType.THOUGHTFUL -> Pair(
+            PetStates.thoughtfulState,
             "Размышления помогают нам расти 🤔"
         )
-        EmotionType.CALM -> Triple(
-            PetState(emotion = emotion, color = Calm),
-            RoomState(
-                weather = WeatherState.SUNNY,
-                plant = PlantState.NORMAL,
-                lighting = RoomLighting.NEUTRAL
-            ),
+        EmotionType.CALM -> Pair(
+            PetStates.calmState,
             "В тишине мы находим покой 🍃"
         )
-        EmotionType.NEUTRAL -> Triple(
-            PetState(emotion = emotion, color = androidx.compose.ui.graphics.Color.Gray),
-            RoomState(),
+        EmotionType.NEUTRAL -> Pair(
+            PetStates.neutralState,
             "Привет! Как дела?"
         )
     }

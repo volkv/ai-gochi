@@ -6,68 +6,55 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
-
-enum class WeatherState {
-    SUNNY, CLOUDY
-}
-
-enum class PlantState {
-    BLOOMING, NORMAL, WITHERING
-}
-
-enum class RoomLighting {
-    WARM, COOL, NEUTRAL
-}
-
-data class RoomState(
-    val weather: WeatherState = WeatherState.SUNNY,
-    val plant: PlantState = PlantState.NORMAL,
-    val lighting: RoomLighting = RoomLighting.NEUTRAL,
-    val hasCandle: Boolean = false
-)
+import com.hackathon.echo.data.PetState
+import com.hackathon.echo.data.RoomLighting
+import com.hackathon.echo.data.PlantState
+import com.hackathon.echo.data.WeatherState
+import com.hackathon.echo.data.EmotionType
 
 @Composable
 fun RoomBackground(
-    roomState: RoomState,
+    petState: PetState,
     modifier: Modifier = Modifier
 ) {
     Canvas(
         modifier = modifier
             .fillMaxSize()
             .background(
-                brush = when (roomState.lighting) {
+                brush = when (petState.roomLighting) {
                     RoomLighting.WARM -> Brush.verticalGradient(
                         colors = listOf(Color(0xFFFFF8DC), Color(0xFFFFE4B5))
                     )
-                    RoomLighting.COOL -> Brush.verticalGradient(
+                    RoomLighting.COLD -> Brush.verticalGradient(
                         colors = listOf(Color(0xFFE6F3FF), Color(0xFFB3D9FF))
                     )
-                    RoomLighting.NEUTRAL -> Brush.verticalGradient(
+                    RoomLighting.SOFT -> Brush.verticalGradient(
+                        colors = listOf(Color(0xFFF8F8FF), Color(0xFFE6E6FA))
+                    )
+                    RoomLighting.BALANCED -> Brush.verticalGradient(
                         colors = listOf(Color(0xFFF5F5F5), Color(0xFFE0E0E0))
                     )
                 }
             )
     ) {
-        drawRoom(roomState)
+        drawRoom(petState)
     }
 }
 
-private fun DrawScope.drawRoom(roomState: RoomState) {
+private fun DrawScope.drawRoom(petState: PetState) {
     val width = size.width
     val height = size.height
     
     drawFloor(width, height)
-    drawWindow(roomState.weather, width, height)
+    drawWindow(petState.weatherState, width, height)
     drawTable(width, height)
-    drawPlant(roomState.plant, width, height)
+    drawPlant(petState.plantState, width, height)
     
-    if (roomState.hasCandle) {
+    if (petState.emotion == EmotionType.THOUGHTFUL) {
         drawCandle(width, height)
     }
 }
@@ -105,6 +92,7 @@ private fun DrawScope.drawWindow(weather: WeatherState, width: Float, height: Fl
     val skyColor = when (weather) {
         WeatherState.SUNNY -> Color(0xFF87CEEB)
         WeatherState.CLOUDY -> Color(0xFF708090)
+        WeatherState.CLEAR -> Color(0xFFB0E0E6)
     }
     
     drawRect(
@@ -153,6 +141,9 @@ private fun DrawScope.drawWindow(weather: WeatherState, width: Float, height: Fl
                 Offset(windowLeft + windowWidth * 0.7f, windowTop + windowHeight * 0.2f),
                 windowWidth * 0.12f
             )
+        }
+        WeatherState.CLEAR -> {
+            // Чистое небо без дополнительных элементов
         }
     }
     
@@ -267,7 +258,7 @@ private fun DrawScope.drawPlant(plantState: PlantState, width: Float, height: Fl
                 center = Offset(stemX + 10f, stemTop + 5f)
             )
         }
-        PlantState.WITHERING -> {
+        PlantState.WILTING -> {
             drawCircle(
                 color = Color(0xFF8FBC8F).copy(alpha = 0.6f),
                 radius = 8f,

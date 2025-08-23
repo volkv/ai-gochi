@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.hackathon.echo.data.EmotionType
 import com.hackathon.echo.ui.theme.Calm
 import com.hackathon.echo.ui.theme.Joy
 import com.hackathon.echo.ui.theme.Sadness
