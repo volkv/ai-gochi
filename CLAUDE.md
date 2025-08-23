@@ -87,12 +87,11 @@ The app follows MVVM (Model-View-ViewModel) architecture with reactive programmi
 - `SoundManager.kt` - Audio and haptic feedback management using MediaPlayer and Vibrator APIs
 
 ### Emotion System
-The app recognizes 5 emotional states:
-- JOY (yellow) - bouncing animations, golden sparkles
-- SADNESS (blue) - shrinking animations, tear drops
-- THOUGHTFUL (purple) - meditation pose, mystical aura
-- CALM (green) - breathing animation, minimal effects
-- NEUTRAL (gray) - default state
+The app recognizes 4 emotional states:
+- JOY (golden #FFD700) - warm lighting, blooming plant, sunny weather
+- SADNESS (royal blue #4169E1) - cold lighting, wilting plant, cloudy weather
+- THOUGHTFUL (medium purple #9370DB) - soft lighting, normal plant, clear weather
+- NEUTRAL (gray #CCCCCC) - balanced lighting, normal plant, clear weather
 
 ### State Management
 - StateFlow for reactive UI updates
@@ -105,6 +104,7 @@ Sound files located in `app/src/main/res/raw/`:
 - `joy_chime.mp3`, `sad_ambient.mp3`, `thoughtful_meditation.mp3`, `calm_nature.mp3`
 - `message_send.mp3`, `message_receive.mp3`
 - Vibration patterns for haptic feedback (requires VIBRATE permission)
+- Managed through SoundManager singleton with proper lifecycle handling
 
 ## Development Guidelines
 
@@ -148,6 +148,31 @@ Text-based emotion recognition uses keyword matching with scoring system. Keywor
 
 ### Demo Presentation System
 The app includes a complete demo scenario system for hackathon presentations:
-- 6-step presentation flow (330 seconds total)
-- Pre-scripted phrases for each emotion type
-- Timing guidance and fallback plans in `DemoScenario.kt`
+- Cyclic demo phrases for each emotion type in Russian
+- Pre-scripted emotional responses for quick testing
+- Demo buttons in ChatInterface for rapid emotion demonstration
+- Accessible through `DemoScriptedPhrases` object
+
+## Core Business Logic
+
+### Emotion Detection Algorithm
+The app uses Russian keyword-based emotion detection in `EchoViewModel.detectEmotionFromText()`:
+- **Joy keywords**: радость, счастлив, отлично, здорово, супер, прекрасно, восторг, ура, победа, успех, достижение, поздравь, праздник
+- **Sadness keywords**: грустно, печально, расстроен, переживаю, тревога, проблема, болит, тяжело, плохо, устал, депрессия, одиноко, страшно
+- **Thoughtful keywords**: думаю, размышляю, интересно, будущее, философия, смысл, вопрос, почему, задаюсь, мысли, анализ, понимание, мудрость
+- Scoring system counts keyword matches, highest score wins
+- Fallback to NEUTRAL if no keywords match
+
+### Pet Statistics System
+Each emotion has a stat value (0-100) tracked in `PetStats`:
+- Stats increase by +10 when corresponding emotion is triggered
+- Stats can be manually decreased by -5 if needed
+- All changes are automatically saved to SharedPreferences
+- Visual feedback through `StatsChangeModal` component
+
+### Memory and Personalization
+`MemorySystem` provides context-aware responses:
+- Personalized greetings based on usage patterns and time since last interaction
+- Reflective questions after emotion changes
+- Special responses for repeated emotions or detailed messages
+- Achievement tracking with milestone celebrations
