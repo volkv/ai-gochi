@@ -403,8 +403,7 @@ private fun DemoButton(
     ) {
         Button(
             onClick = {
-                val phrase = DemoScriptedPhrases.getRandomPhrase(currentEmotion)
-                onDemoPhrase(phrase)
+                onDemoClick()
             },
             modifier = Modifier
                 .weight(1f)

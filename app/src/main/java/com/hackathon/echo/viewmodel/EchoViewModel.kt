@@ -230,11 +230,14 @@ class EchoViewModel(private val context: Context) : ViewModel() {
     
     fun updatePetStats(emotion: EmotionType, userInput: String = "") {
         val currentStats = _petStats.value
-        var newStats = PetStats.increase(currentStats, emotion)
         
-        // Проверяем на эмпатичность сообщения
+        // Увеличиваем эмоциональный параметр в зависимости от типа сообщения
+        var newStats = PetStats.increase(currentStats, emotion, amount = 10)
+        
+        // Проверяем на эмпатичность сообщения и увеличиваем эмпатию
         if (userInput.isNotEmpty() && detectEmpathyFromText(userInput)) {
-            newStats = PetStats.increaseEmpathy(newStats)
+            val empathyIncrease = getEmpathyIncrease(userInput)
+            newStats = PetStats.increaseEmpathy(newStats, empathyIncrease)
         }
         
         _petStats.value = newStats
@@ -520,12 +523,15 @@ class EchoViewModel(private val context: Context) : ViewModel() {
         
         val joyKeywords = listOf(
             "радость", "счастлив", "отлично", "здорово", "супер", "прекрасно", 
-            "восторг", "ура", "победа", "успех", "достижение", "поздравь", "праздник"
+            "восторг", "ура", "победа", "успех", "достижение", "поздравь", "праздник",
+            "получил", "работа", "предложение", "мечты", "потрясающе", "рад", "радуюсь"
         )
         
         val sadnessKeywords = listOf(
             "грустно", "печально", "расстроен", "переживаю", "тревога", "проблема",
-            "болит", "тяжело", "плохо", "устал", "депрессия", "одиноко", "страшно"
+            "болит", "тяжело", "плохо", "устал", "депрессия", "одиноко", "страшно",
+            "потерянный", "потерян", "потеряна", "растерян", "растеряна", "запутался", 
+            "запуталась", "не знаю", "сомневаюсь", "неуверен", "неуверена", "беспомощен"
         )
         
         val thoughtfulKeywords = listOf(
@@ -565,20 +571,74 @@ class EchoViewModel(private val context: Context) : ViewModel() {
     private fun detectEmpathyFromText(text: String): Boolean {
         val lowercaseText = text.lowercase(Locale.getDefault())
         
-        val empathyKeywords = listOf(
+        val emotionalSharingKeywords = listOf(
             "чувствую", "переживаю", "волнуюсь", "боюсь", "мечтаю", "надеюсь",
             "беспокоюсь", "тревожусь", "сердце", "душа", "эмоции", "откровенно",
             "поделиться", "доверяю", "искренне", "честно говоря", "по секрету",
-            "лично", "интимно", "глубоко", "сокровенное", "признаюсь"
+            "лично", "интимно", "глубоко", "сокровенное", "признаюсь",
+            "расскажу", "делюсь", "хочу рассказать", "важно для меня", "близко к сердцу",
+            "больно", "радостно", "счастлив", "грустно", "одиноко", "испуган",
+            "влюблен", "злюсь", "обижен", "благодарен", "гордо", "стыдно"
         )
         
-        val empathyScore = empathyKeywords.count { keyword ->
+        val personalExperienceKeywords = listOf(
+            "случилось", "произошло", "сегодня", "вчера", "недавно", "со мной",
+            "у меня", "мой", "моя", "мои", "моё", "семья", "родители", "друг",
+            "работа", "учеба", "отношения", "здоровье", "проблемы", "успех",
+            "неудача", "достижение", "планы", "будущее", "прошлое", "жизнь"
+        )
+        
+        val empathyScore = emotionalSharingKeywords.count { keyword ->
             lowercaseText.contains(keyword)
         }
         
-        // Считается эмпатичным, если содержит ключевые слова эмпатии
-        // или если сообщение длинное (>50 символов) - значит пользователь делится чем-то личным
-        return empathyScore > 0 || text.length > 50
+        val personalScore = personalExperienceKeywords.count { keyword ->
+            lowercaseText.contains(keyword)
+        }
+        
+        // Высокий уровень эмпатии - много эмоциональных ключевых слов или личный опыт
+        val isHighEmpathy = empathyScore >= 2 || personalScore >= 2
+        
+        // Средний уровень эмпатии - есть эмоциональные или личные слова, или длинное сообщение
+        val isMediumEmpathy = empathyScore > 0 || personalScore > 0 || text.length > 70
+        
+        return isHighEmpathy || isMediumEmpathy
+    }
+    
+    private fun getEmpathyIncrease(text: String): Int {
+        val lowercaseText = text.lowercase(Locale.getDefault())
+        
+        val emotionalSharingKeywords = listOf(
+            "чувствую", "переживаю", "волнуюсь", "боюсь", "мечтаю", "надеюсь",
+            "беспокоюсь", "тревожусь", "сердце", "душа", "эмоции", "откровенно",
+            "поделиться", "доверяю", "искренне", "честно говоря", "по секрету",
+            "лично", "интимно", "глубоко", "сокровенное", "признаюсь",
+            "расскажу", "делюсь", "хочу рассказать", "важно для меня", "близко к сердцу"
+        )
+        
+        val personalExperienceKeywords = listOf(
+            "случилось", "произошло", "сегодня", "вчера", "недавно", "со мной",
+            "у меня", "мой", "моя", "мои", "моё", "семья", "родители", "друг",
+            "работа", "учеба", "отношения", "здоровье", "проблемы", "успех",
+            "неудача", "достижение", "планы", "будущее", "прошлое", "жизнь"
+        )
+        
+        val empathyScore = emotionalSharingKeywords.count { keyword ->
+            lowercaseText.contains(keyword)
+        }
+        
+        val personalScore = personalExperienceKeywords.count { keyword ->
+            lowercaseText.contains(keyword)
+        }
+        
+        return when {
+            empathyScore >= 3 || personalScore >= 3 -> 15 // Очень личное сообщение
+            empathyScore >= 2 || personalScore >= 2 -> 10 // Личное сообщение
+            empathyScore > 0 || personalScore > 0 -> 7    // Есть личные элементы
+            text.length > 100 -> 5                        // Длинное сообщение
+            text.length > 50 -> 3                         // Средне-длинное сообщение
+            else -> 0
+        }
     }
     
     private fun getContextualResponse(userInput: String, emotion: EmotionType): String {

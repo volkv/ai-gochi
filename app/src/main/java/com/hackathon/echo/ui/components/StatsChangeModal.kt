@@ -48,6 +48,47 @@ import com.hackathon.echo.ui.theme.Sadness
 import com.hackathon.echo.ui.theme.Thoughtful
 import kotlinx.coroutines.delay
 
+private fun getDominantEmotion(statsBefore: PetStats, statsAfter: PetStats): EmotionType? {
+    val joyDiff = statsAfter.joy - statsBefore.joy
+    val sadnessDiff = statsAfter.sadness - statsBefore.sadness
+    val thoughtfulDiff = statsAfter.thoughtful - statsBefore.thoughtful
+    val neutralDiff = statsAfter.neutral - statsBefore.neutral
+    val empathyDiff = statsAfter.empathy - statsBefore.empathy
+    
+    // Находим максимальное изменение среди эмоциональных параметров (не включая эмпатию)
+    val emotionChanges = listOf(
+        EmotionType.JOY to joyDiff,
+        EmotionType.SADNESS to sadnessDiff,
+        EmotionType.THOUGHTFUL to thoughtfulDiff,
+        EmotionType.NEUTRAL to neutralDiff
+    )
+    
+    val maxEmotionChange = emotionChanges.maxByOrNull { it.second }
+    
+    // Возвращаем эмоцию с наибольшим изменением, если оно больше 0
+    return if (maxEmotionChange != null && maxEmotionChange.second > 0) {
+        maxEmotionChange.first
+    } else if (empathyDiff > 0) {
+        // Если только эмпатия изменилась, возвращаем null для показа эмодзи эмпатии
+        null
+    } else {
+        null
+    }
+}
+
+private fun getEmotionEmoji(emotion: EmotionType): String {
+    return when (emotion) {
+        EmotionType.JOY -> "🌟✨"
+        EmotionType.SADNESS -> "💙🌧️"
+        EmotionType.THOUGHTFUL -> "💭🧠"
+        EmotionType.NEUTRAL -> "😌🍃"
+    }
+}
+
+private fun getEmpathyEmoji(): String {
+    return "💖💫"
+}
+
 @Composable
 fun StatsChangeModal(
     statsBefore: PetStats,
@@ -113,6 +154,27 @@ fun StatsChangeModal(
                         textAlign = TextAlign.Center
                     )
                     
+                    // Определяем доминирующую эмоцию для отображения картинки
+                    val dominantEmotion = getDominantEmotion(statsBefore, statsAfter)
+                    val empathyDiff = statsAfter.empathy - statsBefore.empathy
+                    
+                    if (dominantEmotion != null) {
+                        Text(
+                            text = getEmotionEmoji(dominantEmotion),
+                            fontSize = 64.sp,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    } else if (empathyDiff > 0) {
+                        // Показываем эмодзи эмпатии, если изменилась только эмпатия
+                        Text(
+                            text = getEmpathyEmoji(),
+                            fontSize = 64.sp,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    
                     Text(
                         text = "Ваше общение повлияло на Эхо!",
                         style = MaterialTheme.typography.bodyMedium,
@@ -158,6 +220,18 @@ fun StatsChangeModal(
                         label = "Спокойствие",
                         emoji = "😐"
                     )
+                    
+                    // Показываем эмпатию только если она изменилась
+                    val empathyDifference = statsAfter.empathy - statsBefore.empathy
+                    if (empathyDifference != 0) {
+                        EmpathyStatRow(
+                            valueBefore = statsBefore.empathy,
+                            valueAfter = statsAfter.empathy,
+                            color = Color(0xFFE91E63), // Pink color for empathy
+                            label = "Эмпатия",
+                            emoji = "💖"
+                        )
+                    }
                     
                     Spacer(modifier = Modifier.height(8.dp))
                     
@@ -223,6 +297,124 @@ private fun EmotionStatRow(
                     fontWeight = FontWeight.Medium,
                     color = Color.Black
                 )
+            }
+            
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = "$valueBefore",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+                Text(
+                    text = "→",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+                Text(
+                    text = "$valueAfter",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = color
+                )
+                
+                if (difference > 0) {
+                    Text(
+                        text = "(+$difference)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF4CAF50),
+                        fontWeight = FontWeight.Bold
+                    )
+                } else {
+                    Text(
+                        text = "($difference)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFFE57373),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+        
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(Color.Gray.copy(alpha = 0.2f))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(progressValue)
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(color)
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmpathyStatRow(
+    valueBefore: Int,
+    valueAfter: Int,
+    color: Color,
+    label: String,
+    emoji: String,
+    modifier: Modifier = Modifier
+) {
+    val difference = valueAfter - valueBefore
+    
+    if (difference == 0) return
+    
+    var animatedValue by remember { mutableFloatStateOf(valueBefore.toFloat()) }
+    
+    val progressValue by animateFloatAsState(
+        targetValue = animatedValue / 100f,
+        animationSpec = tween(durationMillis = 1000),
+        label = "empathy_progress"
+    )
+    
+    LaunchedEffect(Unit) {
+        delay(300)
+        animatedValue = valueAfter.toFloat()
+    }
+    
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = emoji,
+                    fontSize = 16.sp
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.Black
+                )
+                
+                // Дополнительный текст для объяснения эмпатии
+                if (difference > 0) {
+                    Text(
+                        text = " (делитесь личным!)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = color.copy(alpha = 0.7f),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
             
             Row(
